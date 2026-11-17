@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scrum-poker.live</title>
+  <meta name="description" content="Scrum-poker.live is a real-time task estimation tool for agile teams. The live service is paused. See how it worked." />
+  <meta name="theme-color" content="#ECEEEE" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='2' width='24' height='28' rx='6' fill='%23051320'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%2376DCC2'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #051320;
+      --secondary: #76DCC2;
+      --accent: #5696B2;
+      --background: #ECEEEE;
+      --text-secondary: rgba(5, 20, 33, 0.6);
+      --card-dim: #808080;
+      --white: #ffffff;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--background);
+      color: var(--primary);
+      line-height: 1.55;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; }
+
+    /* ---------- background card pattern (like the landing page) ---------- */
+    .pattern {
+      position: fixed;
+      top: -120px;
+      right: -6%;
+      display: grid;
+      grid-template-columns: repeat(4, 220px);
+      gap: 36px;
+      transform: rotate(45deg);
+      transform-origin: top right;
+      opacity: 0.18;
+      z-index: -1;
+      pointer-events: none;
+    }
+    .pattern span {
+      width: 220px;
+      height: 300px;
+      border-radius: 44px;
+    }
+    .pattern .p { background: var(--primary); }
+    .pattern .s { background: var(--secondary); }
+    .pattern .a { background: var(--accent); }
+
+    /* ---------- header ---------- */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .logo { font-weight: 700; font-size: 15px; text-decoration: none; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .status-pill .dot {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--secondary);
+      display: grid;
+      place-items: center;
+    }
+    .status-pill .dot::after {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.7); }
+    }
+
+    /* ---------- hero ---------- */
+    main { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    .hero {
+      padding: 12vh 0 64px;
+      max-width: 760px;
+    }
+    @media (min-width: 992px) { .hero { padding-left: 76px; } }
+
+    .eyebrow {
+      display: inline-block;
+      background: var(--primary);
+      color: var(--background);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: clamp(40px, 7vw, 72px);
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+    }
+    h1 .ellipsis::after {
+      display: inline-block;
+      content: "";
+      animation: dotty steps(1, end) 2s infinite;
+      width: 0.9em;
+      text-align: left;
+    }
+    @keyframes dotty {
+      0% { content: "."; }
+      33% { content: ".."; }
+      66% { content: "..."; }
+    }
+
+    .lead { font-weight: 600; font-size: 17px; margin-bottom: 16px; }
+    .sub { color: var(--text-secondary); font-size: 16px; margin-bottom: 32px; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 15px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(0.96); }
+    .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .btn-base { background: var(--secondary); color: var(--primary); }
+    .btn-dark { background: var(--primary); color: var(--background); }
+    .btn svg { width: 18px; height: 18px; }
+
+    /* ---------- voting deck (decorative + playful) ---------- */
+    .deck-wrap { margin: 24px 0 96px; }
+    .deck-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .deck {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .vcard {
+      width: 64px;
+      height: 88px;
+      border-radius: 12px;
+      background: var(--primary);
+      color: var(--white);
+      font-size: 26px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .vcard:hover { transform: translateY(-6px); }
+    .vcard:focus-visible { outline: 3px solid var(--secondary); outline-offset: 2px; }
+    .vcard.selected { background: var(--accent); transform: translateY(-10px); }
+    .vcard.coffee { font-size: 22px; }
+    .deck-result {
+      text-align: center;
+      margin-top: 16px;
+      min-height: 24px;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    /* ---------- sections ---------- */
+    section { margin-bottom: 96px; }
+    h2 {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+    .section-sub { color: var(--text-secondary); margin-bottom: 32px; max-width: 640px; }
+
+    /* ---------- gallery ---------- */
+    .featured {
+      background: var(--primary);
+      border-radius: 24px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .featured button,
+    .thumbs button {
+      display: block;
+      width: 100%;
+      border: none;
+      padding: 0;
+      background: none;
+      cursor: zoom-in;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .featured img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+    }
+    .featured figcaption {
+      color: var(--background);
+      padding: 16px 8px 4px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .featured figcaption strong { font-size: 18px; }
+    .featured figcaption span { opacity: 0.7; font-size: 14px; }
+
+    .thumbs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 760px) { .thumbs { grid-template-columns: repeat(2, 1fr); } }
+    .thumbs figure {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 8px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .thumbs figure:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(5, 19, 32, 0.12); }
+    .thumbs img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      object-position: top left;
+      border-radius: 10px;
+    }
+    .thumbs figcaption { font-size: 14px; font-weight: 600; padding: 10px 4px 2px; }
+    .thumbs figcaption small { display: block; font-weight: 400; color: var(--text-secondary); font-size: 13px; }
+
+    /* ---------- features ---------- */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .feature {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .feature .icon {
+      width: 44px;
+      height: 60px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+    .feature:nth-child(3n+1) .icon { background: var(--primary); color: var(--white); }
+    .feature:nth-child(3n+2) .icon { background: var(--secondary); color: var(--primary); }
+    .feature:nth-child(3n+3) .icon { background: var(--accent); color: var(--white); }
+    .feature h3 { font-size: 17px; margin-bottom: 6px; }
+    .feature p { color: var(--text-secondary); font-size: 15px; }
+
+    /* ---------- tech stack ---------- */
+    .stack {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .stack-col {
+      background: var(--primary);
+      color: var(--background);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .stack-col h3 { font-size: 18px; margin-bottom: 16px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(236, 238, 238, 0.12);
+    }
+    .tag.hl { background: var(--secondary); color: var(--primary); }
+
+    /* ---------- footer ---------- */
+    footer {
+      text-align: center;
+      padding: 32px 24px 48px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* ---------- lightbox ---------- */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 19, 32, 0.92);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 56px 16px;
+      z-index: 50;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    }
+    .lb-btn {
+      position: absolute;
+      background: var(--secondary);
+      color: var(--primary);
+      border: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+    .lb-close { top: 12px; right: 12px; }
+    .lb-prev { left: 12px; top: 50%; transform: translateY(-50%); }
+    .lb-next { right: 12px; top: 50%; transform: translateY(-50%); }
+    .lb-caption {
+      position: absolute;
+      bottom: 14px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: var(--background);
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    @media (max-width: 600px) {
+      .pattern { opacity: 0.1; }
+      .vcard { width: 48px; height: 66px; font-size: 20px; }
+      .status-pill .label { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="pattern" aria-hidden="true">
+    <span class="p"></span><span class="s"></span><span class="a"></span><span class="s"></span>
+    <span class="a"></span><span class="p"></span><span class="s"></span><span class="p"></span>
+    <span class="s"></span><span class="a"></span><span class="p"></span><span class="a"></span>
+  </div>
+
+  <header>
+    <a class="logo" href="#">Scrum-poker.live (beta)</a>
+    <div class="status-pill" title="The live service is paused">
+      <span class="label">Paused</span>
+      <span class="dot" aria-hidden="true"></span>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <span class="eyebrow">Service paused</span>
+      <h1>We're taking a break<span class="ellipsis" aria-hidden="true"></span></h1>
+      <p class="lead">
+        Scrum-poker.live was a real-time task estimation tool for agile teams. Players could
+        create a room, invite the team, vote on story points and see the results together.
+      </p>
+      <p class="sub">
+        The live service is offline for now, so rooms can't be created. Below are screenshots
+        of the working app, its main features and the tech stack behind it.
+      </p>
+      <div class="actions">
+        <a class="btn btn-base" href="#screenshots">See the app</a>
+        <a class="btn btn-dark" href="#stack">Tech stack</a>
+      </div>
+    </div>
+
+    <div class="deck-wrap">
+      <p class="deck-label">How long until we're back? Cast your vote.</p>
+      <div class="deck" id="deck" role="group" aria-label="Voting cards">
+        <button class="vcard">1</button>
+        <button class="vcard">2</button>
+        <button class="vcard">3</button>
+        <button class="vcard">5</button>
+        <button class="vcard">8</button>
+        <button class="vcard">13</button>
+        <button class="vcard">21</button>
+        <button class="vcard coffee" aria-label="Coffee break">&#9749;</button>
+      </div>
+      <p class="deck-result" id="deck-result" aria-live="polite"></p>
+    </div>
+
+    <section id="screenshots">
+      <h2>How it worked</h2>
+      <p class="section-sub">
+        Screenshots from the running app. Click any image to see it full size.
+      </p>
+
+      <figure class="featured">
+        <button data-index="2" aria-label="Open full size: results revealed">
+          <img src="sp-3.png" alt="Room after voting: each player's card is revealed and the table shows the most chosen value, average and final result." loading="lazy" />
+        </button>
+        <figcaption>
+          <strong>Results revealed</strong>
+          <span>Cards flip, and the table shows the most chosen value, the average and the agreement level.</span>
+        </figcaption>
+      </figure>
+
+      <div class="thumbs">
+        <figure>
+          <button data-index="0" aria-label="Open full size: landing page">
+            <img src="sp-4.png" alt="Landing page with Create new room and Join room buttons." loading="lazy" />
+          </button>
+          <figcaption>Landing page<small>Create a room or join one with its ID</small></figcaption>
+        </figure>
+        <figure>
+          <button data-index="1" aria-label="Open full size: create room">
+            <img src="sp-5.png" alt="Create new room dialog with room name, voting options, auto reveal and password settings." loading="lazy" />
+          </button>
+          <figcaption>Room setup<small>Card deck, auto reveal and an optional password</small></figcaption>
+        </figure>
+        <figure>
+          <button data-index="3" aria-label="Open full size: room with issue list">
+            <img src="sp-1.png" alt="Room view with players around a table and the issue list in the side panel." loading="lazy" />
+          </button>
+          <figcaption>The room<small>Players around the table, issues in the side panel</small></figcaption>
+        </figure>
+        <figure>
+          <button data-index="4" aria-label="Open full size: voting in progress">
+            <img src="sp-2.png" alt="Voting in progress: two of four players have voted on the selected issue." loading="lazy" />
+          </button>
+          <figcaption>Live voting<small>Everyone sees who has voted, in real time</small></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section>
+      <h2>Features</h2>
+      <p class="section-sub">What the app could do before it was paused.</p>
+      <div class="features">
+        <div class="feature">
+          <div class="icon">5</div>
+          <h3>Real-time voting</h3>
+          <p>Votes, reveals and player joins sync instantly for everyone over WebSockets.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">8</div>
+          <h3>Issue backlog</h3>
+          <p>Add, edit and pick issues in the side panel. Each one keeps its final estimate.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">13</div>
+          <h3>Instant statistics</h3>
+          <p>Most chosen value, average and agreement level are calculated when cards are revealed.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">21</div>
+          <h3>Custom card decks</h3>
+          <p>Pick the voting options, turn on auto reveal and protect a room with a password.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">34</div>
+          <h3>Emoji reactions</h3>
+          <p>React with emoji, or throw a paper ball at a teammate who is taking too long.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">55</div>
+          <h3>Guest accounts</h3>
+          <p>Join with just a name. JWT authentication keeps the session across refreshes.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="stack">
+      <h2>Under the hood</h2>
+      <p class="section-sub">A TypeScript frontend and backend, deployed with GitHub Actions.</p>
+      <div class="stack">
+        <div class="stack-col">
+          <h3>Frontend</h3>
+          <div class="tags">
+            <span class="tag hl">React 18</span>
+            <span class="tag hl">TypeScript</span>
+            <span class="tag">Redux Toolkit</span>
+            <span class="tag">Chakra UI</span>
+            <span class="tag">Socket.IO client</span>
+            <span class="tag">Formik + Yup</span>
+            <span class="tag">Framer Motion</span>
+          </div>
+        </div>
+        <div class="stack-col">
+          <h3>Backend</h3>
+          <div class="tags">
+            <span class="tag hl">NestJS</span>
+            <span class="tag hl">TypeScript</span>
+            <span class="tag">Socket.IO</span>
+            <span class="tag">TypeORM</span>
+            <span class="tag">MariaDB</span>
+            <span class="tag">Passport + JWT</span>
+            <span class="tag">Docker</span>
+            <span class="tag">GitHub Actions</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Scrum-poker.live &middot; Built for agile teams. Paused, not forgotten.
+  </footer>
+
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Screenshot viewer">
+    <button class="lb-btn lb-close" id="lb-close" aria-label="Close">&times;</button>
+    <button class="lb-btn lb-prev" id="lb-prev" aria-label="Previous screenshot">&lsaquo;</button>
+    <img id="lb-img" src="" alt="" />
+    <button class="lb-btn lb-next" id="lb-next" aria-label="Next screenshot">&rsaquo;</button>
+    <p class="lb-caption" id="lb-caption"></p>
+  </div>
+
+  <script>
+    // ---- voting deck easter egg ----
+    (function () {
+      var deck = document.getElementById('deck');
+      var result = document.getElementById('deck-result');
+      var replies = {
+        '1': 'Optimistic! We like it.',
+        '2': 'Two story points of downtime. Bold estimate.',
+        '3': 'Reasonable. Adding it to the backlog.',
+        '5': 'Most chosen value. Probably.',
+        '8': 'Fair. Servers need rest too.',
+        '13': 'Getting pessimistic in here.',
+        '21': 'Ouch. Noted for the retro.',
+        'coffee': 'Coffee break approved. That is basically what we are doing.'
+      };
+      deck.addEventListener('click', function (e) {
+        var card = e.target.closest('.vcard');
+        if (!card) return;
+        deck.querySelectorAll('.vcard').forEach(function (c) { c.classList.remove('selected'); });
+        card.classList.add('selected');
+        var key = card.classList.contains('coffee') ? 'coffee' : card.textContent.trim();
+        result.textContent = replies[key];
+      });
+    })();
+
+    // ---- lightbox ----
+    (function () {
+      var shots = [
+        { src: 'sp-4.png', caption: 'Landing page' },
+        { src: 'sp-5.png', caption: 'Room setup' },
+        { src: 'sp-3.png', caption: 'Results revealed' },
+        { src: 'sp-1.png', caption: 'The room' },
+        { src: 'sp-2.png', caption: 'Live voting' }
+      ];
+      // map data-index (display order on page) to shots[]
+      var order = [0, 1, 2, 3, 4];
+      var box = document.getElementById('lightbox');
+      var img = document.getElementById('lb-img');
+      var cap = document.getElementById('lb-caption');
+      var current = 0;
+      var lastFocus = null;
+
+      function show(i) {
+        current = (i + shots.length) % shots.length;
+        img.src = shots[current].src;
+        img.alt = shots[current].caption;
+        cap.textContent = shots[current].caption + '  (' + (current + 1) + ' / ' + shots.length + ')';
+      }
+      function open(i) {
+        lastFocus = document.activeElement;
+        show(i);
+        box.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('lb-close').focus();
+      }
+      function close() {
+        box.classList.remove('open');
+        document.body.style.overflow = '';
+        if (lastFocus) lastFocus.focus();
+      }
+
+      document.querySelectorAll('[data-index]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          open(order[Number(btn.getAttribute('data-index'))]);
+        });
+      });
+      document.getElementById('lb-close').addEventListener('click', close);
+      document.getElementById('lb-prev').addEventListener('click', function () { show(current - 1); });
+      document.getElementById('lb-next').addEventListener('click', function () { show(current + 1); });
+      box.addEventListener('click', function (e) { if (e.target === box) close(); });
+      document.addEventListener('keydown', function (e) {
+        if (!box.classList.contains('open')) return;
+        if (e.key === 'Escape') close();
+        if (e.key === 'ArrowLeft') show(current - 1);
+        if (e.key === 'ArrowRight') show(current + 1);
+      });
+    })();
+  </script>
+</body>
+</html>
